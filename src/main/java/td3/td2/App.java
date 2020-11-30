@@ -3,13 +3,12 @@
  */
 package td3.td2;
 
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
+import java.util.*;
 import java.util.Map.Entry;
+import java.util.function.BinaryOperator;
 import java.util.function.Function;
 import java.util.function.Predicate;
+import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
 import td3.td2.universite.Annee;
@@ -265,6 +264,35 @@ public class App {
     // ne plante pas (aDEF évalué avant naPasLaMoyenne)
     public static final Predicate<Etudiant> session2v2 = aDEF.or(aNoteEliminatoire).or(naPasLaMoyennev1);
 
+    public static final Function<Annee, Stream<Matiere>> matieresA = annee ->
+            annee.ues().stream()
+                    .flatMap(ue -> ue.ects().keySet().stream());
+
+    public static final Function<Etudiant, Stream<Matiere>> matieresE = etudiant ->
+            etudiant.annee().ues().stream()
+            .flatMap(ue -> ue.ects().keySet().stream());
+
+    public static final Function<Etudiant, Stream<Entry<Matiere, Integer>>> matieresCoefE_ =
+            etudiant -> etudiant.annee().ues().stream()
+            .flatMap(ue -> ue.ects().entrySet().stream());
+
+    public static final Function<Entry<Matiere, Integer>, Paire<Matiere, Integer>> entry2paire =
+            e -> new Paire<Matiere, Integer>(e.getKey(), e.getValue());
+
+    public static final Function<Etudiant, Stream<Paire<Matiere, Integer>>> matieresCoefE =
+            et -> matieresCoefE_.apply(et).map(entry2paire);
+
+    public static final BinaryOperator<Paire<Double, Integer>> accumulateurMoyenne =
+            (a, b) -> new Paire<Double, Integer>(a.fst + b.fst * b.snd, a.snd + b.snd);
+
+    public static final Paire<Double, Integer> zero =
+            new Paire<>(0.0, 0);
+
+    public static final Function<Etudiant, List<Paire<Double, Integer>>> notesPoderees =
+            et -> et.notes().entrySet().stream().map(ent ->
+            matieresCoefE.apply(et).map(x -> new Paire<>(ent.getValue(), x.snd)).reduce(zero, accumulateurMoyenne)
+    ).collect(Collectors.toList());
+
     public static void question3() {
         Matiere m1 = new Matiere("MAT1");
         Matiere m2 = new Matiere("MAT2");
@@ -303,10 +331,6 @@ public class App {
         afficheSiv2("TOUS LES ETUDIANTS SOUS LA MOYENNE INDICATIVE", naPasLaMoyenneGeneralise.apply(moyenneIndicative),
                 a1, e -> String.format("%s %s : %.2f", e.prenom(), e.nom(), moyenneIndicative.apply(e)));
     }
-
-   // public static final Function<Annee, Stream<Matiere>> matieresA = matiere -> (etudiants().  );
-
-
 
     public static void main(String[] args) {
         question1_1();
